@@ -115,6 +115,40 @@ def deprecated(new_name: str):
     return decorator
 
 
+def deprecated_arg_names(arg_mapping):
+    """
+    Decorator which marks a functions keyword arguments as deprecated. It will
+    result in a warning being emitted when the deprecated keyword argument is
+    used, and the function being called with the new argument.
+
+    Parameters
+    ----------
+    arg_mapping : dict[str, str]
+        Mapping from deprecated argument name to current argument name.
+    """
+    def decorator(func):
+        @wraps(func)
+        def func_wrapper(*args, **kwargs):
+            warnings.simplefilter(
+                'always', DeprecationWarning)  # turn off filter
+            for old, new in arg_mapping.items():
+                if old in kwargs:
+                    warnings.warn(
+                        "Keyword argument '{0}' has been deprecated in favour "
+                        "of '{1}'. '{0}' will be removed in a future version."
+                        .format(old, new),
+                        category=DeprecationWarning,
+                        stacklevel=2,
+                    )
+                    val = kwargs.pop(old)
+                    kwargs[new] = val
+            warnings.simplefilter(
+                'default', DeprecationWarning)  # reset filter
+            return func(*args, **kwargs)
+        return func_wrapper
+    return decorator
+
+
 class DeprecationMixinMeta(type):
     """
     Use this as superclass so deprecated methods and properties
