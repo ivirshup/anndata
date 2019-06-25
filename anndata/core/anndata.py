@@ -815,13 +815,14 @@ class AnnData(metaclass=utils.DeprecationMixinMeta):
             )
         else:
             X = self._X
-        if self.n_obs == 1 and self.n_vars == 1:
-            return X[0, 0]
-        elif self.n_obs == 1 or self.n_vars == 1:
-            if issparse(X): X = X.toarray()
-            return X.flatten()
-        else:
-            return X
+        return X
+        # if self.n_obs == 1 and self.n_vars == 1:
+        #     return X[0, 0]
+        # elif self.n_obs == 1 or self.n_vars == 1:
+        #     if issparse(X): X = X.toarray()
+        #     return X.flatten()
+        # else:
+        #     return X
 
     @X.setter
     def X(self, value: Optional[Union[np.ndarray, sparse.spmatrix]]):
@@ -1296,6 +1297,7 @@ class AnnData(metaclass=utils.DeprecationMixinMeta):
             dfs = [self.obs, self.var]
             if self.isview:
                 if not self.isbacked:
+                    warnings.warn("Initializing view as actual.")
                     self._init_as_actual(self.copy())
                 else:
                     dont_modify = True
