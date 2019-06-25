@@ -575,8 +575,10 @@ class AnnData(metaclass=utils.DeprecationMixinMeta):
                 'Currently, you cannot index repeatedly into a backed AnnData, '
                 'that is, you cannot make a view of a view.')
         self._isview = True
-        if isinstance(oidx, (int, np.integer)): oidx = slice(oidx, oidx+1, 1)
-        if isinstance(vidx, (int, np.integer)): vidx = slice(vidx, vidx+1, 1)
+        # self._oidx = oidx
+        # self._vidx = vidx
+        # if isinstance(oidx, (int, np.integer)): oidx = slice(oidx, oidx+1, 1)
+        # if isinstance(vidx, (int, np.integer)): vidx = slice(vidx, vidx+1, 1)
         if adata_ref.isview:
             prev_oidx, prev_vidx = adata_ref._oidx, adata_ref._vidx
             adata_ref = adata_ref._adata_ref
@@ -588,11 +590,20 @@ class AnnData(metaclass=utils.DeprecationMixinMeta):
         self._adata_ref = adata_ref
         self._oidx = oidx
         self._vidx = vidx
+        norm_oidx = oidx
+        norm_vidx = vidx
+        if isinstance(oidx, (int, np.integer)): norm_oidx = slice(oidx, oidx+1, 1)
+        if isinstance(vidx, (int, np.integer)): norm_vidx = slice(vidx, vidx+1, 1)
+        obs_sub = adata_ref.obs.iloc[norm_oidx]
+        var_sub = adata_ref.var.iloc[norm_vidx]
+
+        # if isinstance(oidx, (int, np.integer)): oidx = slice(oidx, oidx+1, 1)
+        # if isinstance(vidx, (int, np.integer)): vidx = slice(vidx, vidx+1, 1)
         # the file is the same as of the reference object
         self.file = adata_ref.file
         # views on attributes of adata_ref
-        obs_sub = adata_ref.obs.iloc[oidx]
-        var_sub = adata_ref.var.iloc[vidx]
+        # obs_sub = adata_ref.obs.iloc[oidx]
+        # var_sub = adata_ref.var.iloc[vidx]
         self._obsm = adata_ref.obsm._view(self, (oidx,))
         self._varm = adata_ref.varm._view(self, (vidx,))
         self._layers = adata_ref.layers._view(self, (oidx, vidx))
@@ -604,8 +615,8 @@ class AnnData(metaclass=utils.DeprecationMixinMeta):
         self._n_obs = self._adata_ref.n_obs  # use the original n_obs here
         self._slice_uns_sparse_matrices_inplace(uns_new, self._oidx)
         # fix categories
-        self._remove_unused_categories(adata_ref.obs, obs_sub, uns_new)
-        self._remove_unused_categories(adata_ref.var, var_sub, uns_new)
+        # self._remove_unused_categories(adata_ref.obs, obs_sub, uns_new)
+        # self._remove_unused_categories(adata_ref.var, var_sub, uns_new)
         # set attributes
         self._obs = DataFrameView(obs_sub, view_args=(self, 'obs'))
         self._var = DataFrameView(var_sub, view_args=(self, 'var'))
@@ -815,13 +826,14 @@ class AnnData(metaclass=utils.DeprecationMixinMeta):
             )
         else:
             X = self._X
-        if self.n_obs == 1 and self.n_vars == 1:
-            return X[0, 0]
-        elif self.n_obs == 1 or self.n_vars == 1:
-            if issparse(X): X = X.toarray()
-            return X.flatten()
-        else:
-            return X
+        return X
+        # if self.n_obs == 1 and self.n_vars == 1:
+        #     return X[0, 0]
+        # elif self.n_obs == 1 or self.n_vars == 1:
+        #     if issparse(X): X = X.toarray()
+        #     return X.flatten()
+        # else:
+        #     return X
 
     @X.setter
     def X(self, value: Optional[Union[np.ndarray, sparse.spmatrix]]):
@@ -846,8 +858,8 @@ class AnnData(metaclass=utils.DeprecationMixinMeta):
         var_get = self.n_vars == 1 and self.n_obs == len(value)
         obs_get = self.n_obs == 1 and self.n_vars == len(value)
         if var_get or obs_get or self.shape == value.shape:
-            if self.shape != value.shape:
-                value = value.reshape(self.shape)
+            # if self.shape != value.shape:
+            #     value = value.reshape(self.shape)
             if self.isbacked:
                 if self.isview:
                     self.file['X'][oidx, vidx] = value
@@ -1927,7 +1939,7 @@ class AnnData(metaclass=utils.DeprecationMixinMeta):
                                 .format(self._n_obs, len(self._obsm)))
         if 'varm' in key:
             varm = self._varm
-            if not all([v.shape[0] == self._n_vars for v in varm.values()]) and len(varm.dim_names) != self._n_var:
+            if not all([v.shape[0] == self._n_vars for v in varm.values()]) and len(varm.dim_names) != self._n_vars:
                 raise ValueError('Variables annot. `varm` must have number of '
                                 'columns of `X` ({}), but has {} rows.'
                                 .format(self._n_vars, len(self._varm)))

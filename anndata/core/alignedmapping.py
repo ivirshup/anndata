@@ -44,8 +44,13 @@ class AlignedMapping(MutableMapping, ABC):
 
     def _validate_value(self, val, key) -> None:
         """Raises an error if value is invalid"""
-        for i, axis in enumerate(self.axes):
-            if self.parent.shape[axis] != val.shape[i]:
+        i = 0
+        for axis in self.axes:
+            if (i > (len(val.shape) - 1)  # rhs truncated
+                or self.parent.shape[axis] != val.shape[i]  # lhs truncated
+            ):
+                if self.parent.shape[axis] == 1:  # This axis can be skipped
+                    continue
                 right_shape = tuple(self.parent.shape[a] for a in self.axes)
                 raise ValueError(
                     "Value passed for key '{key}' is of incorrect shape. Values of"
@@ -54,10 +59,15 @@ class AlignedMapping(MutableMapping, ABC):
                     .format(
                         key=key, attrname=self.attrname, axes=self.axes, wrong_shape=val.shape, right_shape=right_shape)
                 )
-        try:  # TODO: Handle objects with indices
+            i += 1
+        try:  # TODO: Handle objects with indices better
             # Could probably also re-order index if it's contained
-            if not (val.index == self.dim_names).all():
-                raise IndexError()  # Maybe not index error
+            if isinstance(val, pd.Series):
+                if not all([val.name] == self.dim_names):
+                    raise IndexError()
+            elif isinstance(val, pd.DataFrame):
+                if not (val.index == self.dim_names).all():
+                    raise IndexError()  # Maybe not index error
         except AttributeError:
             pass
         # TODO: Modify this as soon as writing dataframes works
