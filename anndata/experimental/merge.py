@@ -73,23 +73,24 @@ def _gen_slice_to_append(
     fill_value=None,
 ):
     for ds, ri in zip(datasets, reindexers):
-        n_slices = ds.shape[axis] * ds.shape[1 - axis] // max_loaded_elems
+        backed = ds.to_backed() # backed object returns data immediately but ds does not, needed for the `else`
+        n_slices = backed.shape[axis] * backed.shape[1 - axis] // max_loaded_elems
         if n_slices < 2:
             yield (csr_matrix, csc_matrix)[axis](
                 ri(to_memory(ds), axis=1 - axis, fill_value=fill_value)
             )
         else:
-            slice_size = max_loaded_elems // ds.shape[1 - axis]
+            slice_size = max_loaded_elems // backed.shape[1 - axis]
             if slice_size == 0:
                 slice_size = 1
-            rem_slices = ds.shape[axis]
+            rem_slices = backed.shape[axis]
             idx = 0
             while rem_slices > 0:
                 ds_part = None
                 if axis == 0:
-                    ds_part = ds[idx : idx + slice_size, :]
+                    ds_part = backed[idx : idx + slice_size, :]
                 elif axis == 1:
-                    ds_part = ds[:, idx : idx + slice_size]
+                    ds_part = backed[:, idx : idx + slice_size]
 
                 yield (csr_matrix, csc_matrix)[axis](
                     ri(ds_part, axis=1 - axis, fill_value=fill_value)
